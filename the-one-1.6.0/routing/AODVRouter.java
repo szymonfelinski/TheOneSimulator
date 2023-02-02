@@ -4,6 +4,8 @@
  */
 package routing;
 
+import java.util.HashMap;
+
 import core.Connection;
 import core.DTNHost;
 import core.Message;
@@ -14,6 +16,41 @@ import core.Settings;
  * (or fragments) and forwards it to the first available contact.
  */
 public class AODVRouter extends ActiveRouter {
+	private class RREQ {
+		public DTNHost sourceID;
+		public DTNHost destinationID;
+		public int sequenceNumber;
+		public String broadcastID;
+		public int hopCount;
+		
+		public RREQ() {
+			return;
+		}
+	}
+	private class RREP {
+		public DTNHost sourceID;
+		public DTNHost destinationID;
+		public int sequenceNumber;
+		public int hopCount;
+		public int TTL;
+		
+		public RREP() {
+			return;
+		}
+	}
+	
+	private class RoutingTableEntry {
+		public DTNHost destinationID;
+		public DTNHost nextHop;
+		public int hops;
+		public int sequenceNumber;
+		
+		public RoutingTableEntry() {
+			return;
+		}
+	}
+	
+	protected HashMap<DTNHost, RoutingTableEntry> routingTable;
 	
 	/**
 	 * Constructor. Creates a new message router based on the settings in
@@ -64,6 +101,9 @@ public class AODVRouter extends ActiveRouter {
 	protected void transferDone(Connection con) {
 		/* don't leave a copy for the sender */
 		this.deleteMessage(con.getMessage().getId(), false);
+	}
+	
+	protected boolean isInToPass(RREQ) {
 	}
 		
 	@Override
