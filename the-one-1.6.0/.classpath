@@ -6,17 +6,17 @@
 			<attribute name="module" value="true"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="C:/Users/szyfel/Downloads/the-one-1.6.0/junit.jar">
+	<classpathentry kind="lib" path="C:/Users/szyfel/Downloads/TheOneSimulator/the-one-1.6.0/junit.jar">
 		<attributes>
 			<attribute name="module" value="true"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="C:/Users/szyfel/Downloads/the-one-1.6.0/lib/DTNConsoleConnection.jar">
+	<classpathentry kind="lib" path="C:/Users/szyfel/Downloads/TheOneSimulator/the-one-1.6.0/lib/DTNConsoleConnection.jar">
 		<attributes>
 			<attribute name="module" value="true"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="C:/Users/szyfel/Downloads/the-one-1.6.0/lib/ECLA.jar">
+	<classpathentry kind="lib" path="C:/Users/szyfel/Downloads/TheOneSimulator/the-one-1.6.0/lib/ECLA.jar">
 		<attributes>
 			<attribute name="module" value="true"/>
 		</attributes>
