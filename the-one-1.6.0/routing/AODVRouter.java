@@ -83,7 +83,7 @@ public class AODVRouter extends ActiveRouter {
 	private class RoutingTable {
 
 		private HashMap<DTNHost, RoutingTableEntry> routingTable;
-		public int DEFAULT_TIMEOUT = 1000000;
+		public int DEFAULT_TIMEOUT = 10000;
 
 		public RoutingTable() {
 			this.routingTable = new HashMap<>();
@@ -149,12 +149,11 @@ public class AODVRouter extends ActiveRouter {
 	public void update() {
 		super.update();
 		if (isTransferring() || !canStartTransfer()) {
-			return; // transferring, don't try other connections yet
+			return;
 		}
 
-		// Try first the messages that can be delivered to final recipient
 		if (exchangeDeliverableMessages() != null) {
-			System.out.println("I have delivered the message to final recipient");
+			//System.out.println("Message delivered to target.");
 			return; // started a transfer, don't try others (yet)
 		}
 
@@ -174,16 +173,16 @@ public class AODVRouter extends ActiveRouter {
 				}
 
 			} else {
-				System.out.println("A route for this message is known.");
+				//System.out.println("A route for this message is known.");
 				for (Connection con : getConnections()) {
 					DTNHost peer = con.getOtherNode(getHost());
 
 					if (peer == route.nextHop) {
-						 System.out.println("Next hop is in range. Starting transfer.");
+						 //System.out.println("Next hop is in range. Starting transfer.");
 						messagesToSend.add(new Tuple<Message, Connection>(message, con));
 						if (con.isReadyForTransfer() && con.startTransfer(getHost(), message) == RCV_OK) {
 
-							System.out.println("Transfer ok, RCV_OK");
+							//System.out.println("Transfer OK, RCV_OK");
 						}
 					}
 				}
@@ -205,7 +204,7 @@ public class AODVRouter extends ActiveRouter {
 				if (con.isUp()) {
 					if (((AODVRouter) con.getOtherNode(getHost()).getRouter()).isTransferring())
 					{
-						System.out.println("A transfer is ongoing on the other side.");
+						//System.out.println("A transfer is ongoing on the other side.");
 					}
 					DTNHost peer = con.getOtherNode(getHost());
 					RREQ toPass = new RREQ(rreq);
@@ -227,7 +226,7 @@ public class AODVRouter extends ActiveRouter {
 						if (peer == route.nextHop) {
 							RREP toPass = new RREP(rrep);
 							toPass.hopCount++;
-							System.out.println("Passing RREP to next hop.");
+							//System.out.println("Passing RREP to next hop.");
 							((AODVRouter) peer.getRouter()).passRREP(con, toPass);
 							toRemove.add(rrep);
 						}
@@ -276,7 +275,7 @@ public class AODVRouter extends ActiveRouter {
 		routingTable.addRoute(rrep.sourceID, peer, rrep.hopCount);
 
 		if (rrep.destinationID == getHost()) {
-			// This is RREP for me. I do not need to search for it using RREQ
+			// RREP reached its target.
 
 			ArrayList<RREQ> toRemove = new ArrayList<RREQ>();
 			for (RREQ rreq : rreqToPass) {
@@ -287,7 +286,9 @@ public class AODVRouter extends ActiveRouter {
 			rreqToPass.removeAll(toRemove);
 
 		} else {
-			// I need to pass this RREP, it is for someone else
+			// RREP is for another node.
+			
+			//System.out.println("Passing RREP.");
 			if (isInToPass(rrep)) {
 				return;
 			} else {

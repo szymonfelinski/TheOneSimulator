@@ -1,5 +1,5 @@
 
-Scenario.name = default_scenario
+Scenario.name = Manhattan_scenario
 Scenario.simulateConnections = true
 Scenario.updateInterval = 1
 # 43k ~= 12h
@@ -15,7 +15,7 @@ Scenario.nrofHostGroups = 3
 Group.movementModel = MapBasedMovement
 Group.router = AODVRouter
 Group.bufferSize = 100M
-Group.transmitRange = 10
+Group.transmitRange = 100
 # transmit speed of 2 Mbps = 250kBps
 Group.transmitSpeed = 100k
 Group.waitTime = 0, 0
