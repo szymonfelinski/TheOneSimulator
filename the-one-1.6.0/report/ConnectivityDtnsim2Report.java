@@ -36,6 +36,7 @@ public class ConnectivityDtnsim2Report extends Report
 		
 		if (isWarmup() || isWarmupID(conString)) {
 			removeWarmupID(conString);
+			System.out.println("Hosts disconnected.");
 			return;
 		} 
 		

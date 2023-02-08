@@ -5,7 +5,7 @@ Scenario.updateInterval = 1
 # 43k ~= 12h
 Scenario.endTime = 700k
 
-Report.warmup = 200000
+Report.warmup = 500
 Group.msgTtl = 1433
 
 Scenario.nrofHostGroups = 3
@@ -83,7 +83,7 @@ MovementModel.rngSeed = [2; 8372; 98092; 18293; 777]
 # World's size for Movement Models without implicit size (width, height; meters)
 MovementModel.worldSize = 10000, 8000
 # How long time to move hosts in the world before real simulation
-MovementModel.warmup = 43000
+MovementModel.warmup = 500
 
 ## Map based movement -movement model specific settings
 MapBasedMovement.nrofMapFiles = 1

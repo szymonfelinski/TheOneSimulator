@@ -5,10 +5,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.UUID;
 
-import core.Connection;
-import core.DTNHost;
 import core.Message;
 import core.Settings;
+import core.Connection;
+import core.DTNHost;
+import core.MessageListener;
+import core.NetworkInterface;
 import core.SimClock;
 import util.Tuple;
 
@@ -51,7 +53,7 @@ public class AODVRouter extends ActiveRouter {
 			this.sourceID = sourceID;
 			this.destinationID = destinationID;
 			this.sequenceNumber = SimClock.getIntTime();
-			this.hopCount = 0; // ???
+			this.hopCount = 0;
 			this.TTL = 10000;
 		}
 
@@ -122,7 +124,7 @@ public class AODVRouter extends ActiveRouter {
 
 	@Override
 	public MessageRouter replicate() {
-		return new CustomRouter(this);
+		return new AODVRouter(this);
 	}
 
 	public boolean isInToPass(RREQ rreq) {
@@ -164,7 +166,7 @@ public class AODVRouter extends ActiveRouter {
 		for (Message message : messages) {
 			RoutingTableEntry route = routingTable.getRoute(message.getTo());
 			if (route == null) {
-				// If I do not know the route for this message, i need to create RREQ
+				// No route is known, create RREQ
 				RREQ newRreq = new RREQ(message.getFrom(), message.getTo());
 				if (isInToPass(newRreq) == false) {
 					// Put RREQ on the broadcast list
@@ -172,19 +174,17 @@ public class AODVRouter extends ActiveRouter {
 				}
 
 			} else {
-				// I know a route for this message
-				// System.out.println("I know a route for this message!!!!111");
+				System.out.println("A route for this message is known.");
 				for (Connection con : getConnections()) {
 					DTNHost peer = con.getOtherNode(getHost());
 
 					if (peer == route.nextHop) {
-						// I have next hop in range, i am going to start transfer
-						// System.out.println("I have next hop in range!");
+						 System.out.println("Next hop is in range. Starting transfer.");
 						messagesToSend.add(new Tuple<Message, Connection>(message, con));
-//						if (c.isReadyForTransfer() && c.startTransfer(getHost(), message) == RCV_OK) {
-//
-//							System.out.println("I have managed to transfer, RCV_OK");
-//						}
+						if (con.isReadyForTransfer() && con.startTransfer(getHost(), message) == RCV_OK) {
+
+							System.out.println("Transfer ok, RCV_OK");
+						}
 					}
 				}
 				Tuple<Message, Connection> ret = tryMessagesForConnected(messagesToSend);
@@ -203,6 +203,10 @@ public class AODVRouter extends ActiveRouter {
 		for (RREQ rreq : tempRreqToPass) {
 			for (Connection con : connections) {
 				if (con.isUp()) {
+					if (((AODVRouter) con.getOtherNode(getHost()).getRouter()).isTransferring())
+					{
+						System.out.println("A transfer is ongoing on the other side.");
+					}
 					DTNHost peer = con.getOtherNode(getHost());
 					RREQ toPass = new RREQ(rreq);
 					toPass.hopCount++;
@@ -212,13 +216,10 @@ public class AODVRouter extends ActiveRouter {
 		}
 
 		ArrayList<RREP> toRemove = new ArrayList<RREP>();
-		// Pass the RREP messages:
-		// ArrayList<RREP> tempRreplToPass = new ArrayList<RREP>(rrepToPass);
 		for (RREP rrep : rrepToPass) {
 			RoutingTableEntry route = routingTable.getRoute(rrep.destinationID);
 			if (route == null) {
-				// I don't know where to pass the RREP?????
-				System.out.println("I don't know where to pass the RREP?????");
+				System.out.println("No info about where to pass the RREP.");
 			} else {
 				for (Connection con : connections) {
 					if (con.isUp()) {
@@ -226,6 +227,7 @@ public class AODVRouter extends ActiveRouter {
 						if (peer == route.nextHop) {
 							RREP toPass = new RREP(rrep);
 							toPass.hopCount++;
+							System.out.println("Passing RREP to next hop.");
 							((AODVRouter) peer.getRouter()).passRREP(con, toPass);
 							toRemove.add(rrep);
 						}
@@ -287,10 +289,8 @@ public class AODVRouter extends ActiveRouter {
 		} else {
 			// I need to pass this RREP, it is for someone else
 			if (isInToPass(rrep)) {
-				// I already have is in my isInToPass.
 				return;
 			} else {
-				// I need to put it in my isInToPass;
 				RREP toAdd = new RREP(rrep);
 				toAdd.hopCount++;
 				rrepToPass.add(toAdd);
@@ -310,10 +310,12 @@ public class AODVRouter extends ActiveRouter {
 		int retval = super.receiveMessage(m, from);
 		if (retval == RCV_OK) {
 			if (m.getTo() == getHost()) {
-//				System.out.print(getHost());
-//				System.out.print(": ");
-//				System.out.print(m);
-//				System.out.println(" The massage was for me!");
+				System.out.print(getHost());
+				System.out.print(": ");
+				System.out.print(m);
+				System.out.println(" The message was for me!");
+				//super.messageTransferred(m.getId(), m.getFrom());
+				
 			} else {
 				this.addToMessages(m, true);
 			}

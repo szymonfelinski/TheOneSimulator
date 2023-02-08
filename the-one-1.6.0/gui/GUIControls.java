@@ -86,7 +86,7 @@ public class GUIControls extends JPanel implements ActionListener, ChangeListene
 	public static final double ZOOM_MAX = 10;
 	
 	/** index of initial update speed setting */
-	public static final int INITIAL_SPEED_SELECTION = 3;
+	public static final int INITIAL_SPEED_SELECTION = 8;
 	/** index of FFW speed setting */
 	public static final int FFW_SPEED_INDEX = 7;
 	
