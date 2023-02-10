@@ -455,8 +455,9 @@ public abstract class MessageRouter {
 	public void messageAborted(String id, DTNHost from, int bytesRemaining) {
 		Message incoming = removeFromIncomingBuffer(id, from);
 		if (incoming == null) {
-			throw new SimError("No incoming message for id " + id + 
-					" to abort in " + this.host);
+			//throw new SimError("No incoming message for id " + id + 
+				//	" to abort in " + this.host);
+			return;
 		}		
 		
 		for (MessageListener ml : this.mListeners) {

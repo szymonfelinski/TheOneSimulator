@@ -5,8 +5,8 @@ Scenario.updateInterval = 1
 # 43k ~= 12h
 Scenario.endTime = 700k
 
-Report.warmup = 500
-Group.msgTtl = 1433
+Report.warmup = 0
+Group.msgTtl = 14500
 
 Scenario.nrofHostGroups = 3
 
@@ -15,7 +15,7 @@ Scenario.nrofHostGroups = 3
 Group.movementModel = MapBasedMovement
 Group.router = AODVRouter
 Group.bufferSize = 100M
-Group.transmitRange = 100
+Group.transmitRange = 10
 # transmit speed of 2 Mbps = 250kBps
 Group.transmitSpeed = 100k
 Group.waitTime = 0, 0

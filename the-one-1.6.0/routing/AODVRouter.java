@@ -9,8 +9,6 @@ import core.Message;
 import core.Settings;
 import core.Connection;
 import core.DTNHost;
-import core.MessageListener;
-import core.NetworkInterface;
 import core.SimClock;
 import util.Tuple;
 
@@ -111,8 +109,8 @@ public class AODVRouter extends ActiveRouter {
 	}
 
 	public RoutingTable routingTable = new RoutingTable();
-	public ArrayList<RREQ> rreqToPass = new ArrayList<RREQ>();
-	public ArrayList<RREP> rrepToPass = new ArrayList<RREP>();
+	public ArrayList<RREQ> rreqToRelay = new ArrayList<RREQ>();
+	public ArrayList<RREP> rrepToRelay = new ArrayList<RREP>();
 
 	public AODVRouter(Settings s) {
 		super(s);
@@ -127,24 +125,6 @@ public class AODVRouter extends ActiveRouter {
 		return new AODVRouter(this);
 	}
 
-	public boolean isInToPass(RREQ rreq) {
-		for (RREQ value : rreqToPass) {
-			if (value.destinationID == rreq.destinationID) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	public boolean isInToPass(RREP rrep) {
-		for (RREP value : rrepToPass) {
-			if (value.destinationID == rrep.destinationID) {
-				return true;
-			}
-		}
-		return false;
-	}
-
 	@Override
 	public void update() {
 		super.update();
@@ -153,10 +133,9 @@ public class AODVRouter extends ActiveRouter {
 		}
 
 		if (exchangeDeliverableMessages() != null) {
-			//System.out.println("Message delivered to target.");
-			return; // started a transfer, don't try others (yet)
+			return;
 		}
-
+		
 		routingTable.removeExpiredRoutes();
 
 		List<Message> messages = new ArrayList<Message>(this.getMessageCollection());
@@ -167,13 +146,12 @@ public class AODVRouter extends ActiveRouter {
 			if (route == null) {
 				// No route is known, create RREQ
 				RREQ newRreq = new RREQ(message.getFrom(), message.getTo());
-				if (isInToPass(newRreq) == false) {
+				if (isInToRelay(newRreq) == false) {
 					// Put RREQ on the broadcast list
-					rreqToPass.add(newRreq);
+					rreqToRelay.add(newRreq);
 				}
 
 			} else {
-				//System.out.println("A route for this message is known.");
 				for (Connection con : getConnections()) {
 					DTNHost peer = con.getOtherNode(getHost());
 
@@ -181,8 +159,7 @@ public class AODVRouter extends ActiveRouter {
 						 //System.out.println("Next hop is in range. Starting transfer.");
 						messagesToSend.add(new Tuple<Message, Connection>(message, con));
 						if (con.isReadyForTransfer() && con.startTransfer(getHost(), message) == RCV_OK) {
-
-							//System.out.println("Transfer OK, RCV_OK");
+							
 						}
 					}
 				}
@@ -198,24 +175,24 @@ public class AODVRouter extends ActiveRouter {
 		// Broadcast all RREQ messages:
 		List<Connection> connections = getConnections();
 
-		ArrayList<RREQ> tempRreqToPass = new ArrayList<RREQ>(rreqToPass);
-		for (RREQ rreq : tempRreqToPass) {
+		ArrayList<RREQ> temprreqToRelay = new ArrayList<RREQ>(rreqToRelay);
+		for (RREQ rreq : temprreqToRelay) {
 			for (Connection con : connections) {
 				if (con.isUp()) {
 					if (((AODVRouter) con.getOtherNode(getHost()).getRouter()).isTransferring())
 					{
-						//System.out.println("A transfer is ongoing on the other side.");
+						continue;
 					}
 					DTNHost peer = con.getOtherNode(getHost());
-					RREQ toPass = new RREQ(rreq);
-					toPass.hopCount++;
-					((AODVRouter) peer.getRouter()).passRREQ(con, toPass);
+					RREQ toRelay = new RREQ(rreq);
+					toRelay.hopCount++;
+					((AODVRouter) peer.getRouter()).relayRREQ(con, toRelay);
 				}
 			}
 		}
 
 		ArrayList<RREP> toRemove = new ArrayList<RREP>();
-		for (RREP rrep : rrepToPass) {
+		for (RREP rrep : rrepToRelay) {
 			RoutingTableEntry route = routingTable.getRoute(rrep.destinationID);
 			if (route == null) {
 				System.out.println("No info about where to pass the RREP.");
@@ -224,10 +201,9 @@ public class AODVRouter extends ActiveRouter {
 					if (con.isUp()) {
 						DTNHost peer = con.getOtherNode(getHost());
 						if (peer == route.nextHop) {
-							RREP toPass = new RREP(rrep);
-							toPass.hopCount++;
-							//System.out.println("Passing RREP to next hop.");
-							((AODVRouter) peer.getRouter()).passRREP(con, toPass);
+							RREP toRelay = new RREP(rrep);
+							toRelay.hopCount++;
+							((AODVRouter) peer.getRouter()).relayRREP(con, toRelay);
 							toRemove.add(rrep);
 						}
 					}
@@ -236,12 +212,34 @@ public class AODVRouter extends ActiveRouter {
 
 			}
 		}
-		rrepToPass.removeAll(toRemove);
+		rrepToRelay.removeAll(toRemove);
+
+		//tryAllMessagesToAllConnections();
 
 	}
+	
+	@Override
+	public void changedConnection(Connection con) {
+		super.changedConnection(con);
+	}
 
-	public void passRREQ(Connection con, RREQ rreq) {
-
+	@Override
+	public int receiveMessage(Message m, DTNHost from) {
+		int retval = super.receiveMessage(m, from);
+		if (retval == RCV_OK) {
+			if (m.getTo() == getHost()) {
+//				System.out.println("Received message addressed for this host.");
+//				super.messageTransferred(m.getId(), m.getFrom());
+//				this.messageTransferred(m.getId(), from);
+			} else {
+				this.addToMessages(m, true);
+				//sendMessageToConnected(m);
+			}
+		}
+		return retval;
+	}
+	
+	public void relayRREQ(Connection con, RREQ rreq) {
 		DTNHost peer = con.getOtherNode(getHost());
 
 		routingTable.addRoute(rreq.sourceID, peer, rreq.hopCount);
@@ -249,25 +247,25 @@ public class AODVRouter extends ActiveRouter {
 		RoutingTableEntry route = routingTable.getRoute(rreq.destinationID);
 		if (route == null) {
 			// I do not know how to reach the peer
-			if (isInToPass(rreq) == false) {
+			if (isInToRelay(rreq) == false) {
 				rreq.hopCount++;
-				rreqToPass.add(rreq);
+				rreqToRelay.add(rreq);
 			}
 			return;
 		} else {
 			// I know the route to the peer
-			RREP toPass = new RREP(route.destinationID, rreq.sourceID);
-			toPass.hopCount = route.hopNumber + rreq.hopCount;
-			((AODVRouter) peer.getRouter()).passRREP(con, toPass);
+			RREP toRelay = new RREP(route.destinationID, rreq.sourceID);
+			toRelay.hopCount = route.hopNumber + rreq.hopCount;
+			((AODVRouter) peer.getRouter()).relayRREP(con, toRelay);
 		}
 
 	}
 
-	public void passRREP(Connection con, RREP rrep) {
+	public void relayRREP(Connection con, RREP rrep) {
 
 		if (SimClock.getIntTime() - rrep.sequenceNumber >= rrep.TTL) {
-			// Lifetime exceeded, RREP discarded
-			System.out.println("Lifetime exceeded, RREP discarded");
+			// Lifetime exceeded, RREP id to be discarded
+			System.out.println("Lifetime exceeded");
 		}
 
 		DTNHost peer = con.getOtherNode(getHost());
@@ -278,52 +276,43 @@ public class AODVRouter extends ActiveRouter {
 			// RREP reached its target.
 
 			ArrayList<RREQ> toRemove = new ArrayList<RREQ>();
-			for (RREQ rreq : rreqToPass) {
+			for (RREQ rreq : rreqToRelay) {
 				if (rreq.destinationID == rrep.sourceID) {
 					toRemove.add(rreq);
 				}
 			}
-			rreqToPass.removeAll(toRemove);
+			rreqToRelay.removeAll(toRemove);
 
 		} else {
 			// RREP is for another node.
 			
 			//System.out.println("Passing RREP.");
-			if (isInToPass(rrep)) {
+			if (isInToRelay(rrep)) {
 				return;
 			} else {
 				RREP toAdd = new RREP(rrep);
 				toAdd.hopCount++;
-				rrepToPass.add(toAdd);
+				rrepToRelay.add(toAdd);
 			}
 		}
 	}
-
-	@Override
-	public void changedConnection(Connection con) {
-		super.changedConnection(con);
-	}
-
-	@Override
-	public int receiveMessage(Message m, DTNHost from) {
-		// List<Message> messages = new ArrayList<Message>(this.getMessageCollection());
-
-		int retval = super.receiveMessage(m, from);
-		if (retval == RCV_OK) {
-			if (m.getTo() == getHost()) {
-				System.out.print(getHost());
-				System.out.print(": ");
-				System.out.print(m);
-				System.out.println(" The message was for me!");
-				//super.messageTransferred(m.getId(), m.getFrom());
-				
-			} else {
-				this.addToMessages(m, true);
+	
+	public boolean isInToRelay(RREQ rreq) {
+		for (RREQ value : rreqToRelay) {
+			if (value.destinationID == rreq.destinationID) {
+				return true;
 			}
-
 		}
-
-		return retval;
+		return false;
+	}
+	
+	public boolean isInToRelay(RREP rrep) {
+		for (RREP value : rrepToRelay) {
+			if (value.destinationID == rrep.destinationID) {
+				return true;
+			}
+		}
+		return false;
 	}
 
 }
